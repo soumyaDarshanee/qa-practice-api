@@ -1,0 +1,38 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-compliance}
+      POSTGRES_USER: ${POSTGRES_USER:-compliance}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-compliance}
+    ports:
+      - "5433:5432" # 5433 on your machine, so it won't clash with a local Postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-compliance} -d ${POSTGRES_DB:-compliance}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: .
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_DB: ${POSTGRES_DB:-compliance}
+      POSTGRES_USER: ${POSTGRES_USER:-compliance}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-compliance}
+      DEBUG: ${DEBUG:-true}
+      E2E_MODE: ${E2E_MODE:-true}
+      SECRET_KEY: ${SECRET_KEY:-dev-only-not-a-secret}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
